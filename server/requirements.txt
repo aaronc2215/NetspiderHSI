@@ -1,3 +1,4 @@
+ollama>=0.5.0
 altgraph
 apscheduler
 attrs
@@ -78,6 +79,7 @@ pytest-ordering
 pytest-rerunfailures
 pytest-xdist
 python-dateutil
+python-dotenv>=1.0.0
 python-engineio
 python-socketio
 pytz

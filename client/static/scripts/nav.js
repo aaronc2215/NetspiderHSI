@@ -7,7 +7,9 @@ document.addEventListener("DOMContentLoaded", function () {
     var netspiderLink = document.getElementById("netspider-link");
     var keywordLink = document.getElementById("keyword-link");
     var helpLink = document.getElementById("help-link");
-    var resultsLink = document.getElementById("results-link")
+    var resultsLink = document.getElementById("results-link");
+    var reviewLink = document.getElementById("review-link");
+    var reviewBox = document.getElementById("review-box");
 
     var boxes = document.querySelectorAll(".box");
     var bigBox = document.getElementById("big-box");
@@ -43,6 +45,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     resultsLink.addEventListener("click", function () {
         addHoverEffect(bigBox2); // Assuming there's a big box 2, adjust accordingly
+    });
+
+    reviewLink.addEventListener("click", function () {
+        addHoverEffect(reviewBox);
     });
 
     /* Toggle Hamburger Menu */

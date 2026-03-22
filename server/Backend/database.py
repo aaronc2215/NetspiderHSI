@@ -119,3 +119,7 @@ def _set_up(connection: Connection) -> None:
         # WARNING: This type cast bypasses the SQL injection prevention, but
         # `schema_v00` comes from a trusted source (us!), so it's okay.
         cursor.execute(cast(LiteralString, schema_v00))
+
+        schema_v01_resource = resources.files(schema) / "v01.sql"
+        schema_v01 = schema_v01_resource.read_text(encoding="utf-8")
+        cursor.execute(cast(LiteralString, schema_v01))

@@ -278,7 +278,17 @@ class ErosScraper(ScraperPrototype):
                     ),
                 )
         except Exception as e:
-            print(f"Database write failed: {e}") 
+            print(f"Database write failed: {e}")
+
+        self.classify_post(
+            source_table='raw_eros_posts',
+            link=link,
+            city_or_region=self.city,
+            post_text=' '.join(filter(None, [profile_header, description, info_details, contact_details])),
+            keywords_found=list(self.keywords_found_in_post),
+            payment_methods=payment_methods,
+            social_media_accounts=social_media,
+        )
 
     '''
     --------------------------

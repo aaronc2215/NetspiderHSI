@@ -52,12 +52,15 @@ Netspider allows users to navigate through complex web structures, extract data 
 - **Keyword customization**: Investigators can add or remove keywords and keysets for tailored searches.
 - **Multi-format outputs**: Data can be saved as .png, .xlsx, and compiled into a .pdf.
 - **Supported websites**: Escort Alligator, Eros, Megapersonals, Skip the Game, Rub Ratings, YesBackpage.
+- **Post classification (2.0)**: Automatically scores each scraped post using rule-based analysis and a local LLM, assigning it to a bucket (safe, false positive, or risky) with a human review queue for agents.
 
 ## Requirements
 
 - Python 3.8 or higher
+- Node.js and npm
 - Internet connection
 - Sufficient storage space for scraped data
+- [Ollama](https://ollama.com/download) (for LLM-based post classification)
 
 ## Installation
 
@@ -77,17 +80,24 @@ Netspider allows users to navigate through complex web structures, extract data 
    source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
    ```
 
-4. Install the required dependencies:
+4. Install the required Python dependencies:
    ```bash
    pip install -r requirements.txt
    ```
 
-5. In Client Directory, enter:
+5. Install and set up Ollama for local LLM classification:
+   ```bash
+   # Download Ollama from https://ollama.com/download and install it, then:
+   ollama pull llama3.2
+   ```
+   Ollama runs as a background service on `http://localhost:11434` automatically after install. No API key or account required.
+
+6. In Client Directory, enter:
    ```bash
     npm init
     ```
 
-6. install electron in client:
+7. Install Electron in client:
     ```bash
     npm install --save-dev electron
     ```
@@ -143,6 +153,7 @@ Follow the prompts in the UI to configure your keyword sets and begin scraping.
 
 - **Netspider 1v (September 2023)**: Initial release with basic scraping and file selection functionality.
 - **Netspider 3v (February 2024)**: Expanded feature set, including improved keyword search and multi-format outputs.
+- **Netspider 2.0 (Spring 2026)**: Post classification system — hybrid rule-based + local LLM scoring, four-bucket classification (safe / false positive / risky / leads), and a human Review Queue for agent-led verification.
 
 ## Future Development
 

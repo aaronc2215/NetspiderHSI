@@ -352,7 +352,17 @@ class YesbackpageScraper(ScraperPrototype):
                     ),
                 )
         except Exception as e:
-            print(f"Database write failed: {e}") 
+            print(f"Database write failed: {e}")
+
+        self.classify_post(
+            source_table='raw_yesbackpage_posts',
+            link=link,
+            city_or_region=self.city,
+            post_text=' '.join(filter(None, [description, services, name, location, phone_number, email])),
+            keywords_found=list(self.keywords_found_in_post),
+            payment_methods=payment_methods,
+            social_media_accounts=social_media,
+        )
 
     '''
     --------------------------

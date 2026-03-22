@@ -11,6 +11,10 @@ import json
 import threading
 from datetime import datetime
 
+# Load environment variables from server/.env if present
+from dotenv import load_dotenv
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
+
 #third-party imports
 import psycopg
 from psycopg import sql
@@ -354,7 +358,179 @@ def handle_database_results(data):
 
 '''
     ---------------------------------
-    Auto Scraper 
+    Review Queue Sockets
+    ---------------------------------
+'''
+
+# Mapping from source_table name to the clean view that exposes a 'description' column.
+_SOURCE_TABLE_TO_VIEW = {
+    'raw_eros_posts':              'clean_eros_view',
+    'raw_escort_alligator_posts':  'clean_escort_alligator_view',
+    'raw_mega_personals_posts':    'clean_mega_personals_view',
+    'raw_rub_ratings_posts':       'clean_rub_ratings_view',
+    'raw_skipthegames_posts':      'clean_skipthegames_view',
+    'raw_yesbackpage_posts':       'clean_yesbackpage_view',
+}
+
+_ACTION_TO_OUTCOME = {
+    'confirm_risky':     (3, 'confirmed_risky'),
+    'clear_legitimate':  (2, 'cleared'),
+    'mark_safe':         (1, 'marked_safe'),
+}
+
+
+@socketio.on('get_review_queue')
+def handle_get_review_queue(data):
+    """Return classification records, optionally filtered and joined with description."""
+    bucket        = data.get('bucket')
+    source_table  = data.get('source_table')
+    review_status = data.get('review_status')
+    limit         = int(data.get('limit', 100))
+    offset        = int(data.get('offset', 0))
+
+    # Whitelist source_table to prevent injection
+    if source_table and source_table not in _SOURCE_TABLE_TO_VIEW:
+        socketio.emit('review_queue_data', {'error': f'Unknown source table: {source_table}', 'data': [], 'total': 0})
+        return
+
+    try:
+        conn = database.connect(read_only=True)
+    except psycopg.Error:
+        socketio.emit('review_queue_data', {'error': 'Could not connect to database', 'data': [], 'total': 0})
+        return
+
+    try:
+        with conn.cursor(row_factory=dict_row) as cursor:
+            # Build WHERE clause
+            conditions = []
+            params: list = []
+
+            if bucket is not None and bucket != '':
+                conditions.append("pc.bucket = %s")
+                params.append(int(bucket))
+            if source_table:
+                conditions.append("pc.source_table = %s")
+                params.append(source_table)
+            if review_status:
+                conditions.append("pc.review_status = %s")
+                params.append(review_status)
+
+            where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+
+            # Count total matching rows
+            count_sql = f"SELECT count(*) AS total FROM post_classifications pc {where_clause}"
+            cursor.execute(count_sql, params)
+            total_row = cursor.fetchone()
+            total = total_row['total'] if total_row else 0
+
+            # Build the UNION description subquery across all 6 clean views
+            view_union = " UNION ALL ".join(
+                f"SELECT link, city_or_region, left(description, 200) AS description_preview "
+                f"FROM {view_name}"
+                for view_name in _SOURCE_TABLE_TO_VIEW.values()
+            )
+
+            data_sql = f"""
+                SELECT
+                    pc.id, pc.source_table, pc.link, pc.city_or_region,
+                    pc.rule_score, pc.llm_score, pc.final_score,
+                    pc.llm_reasoning, pc.bucket, pc.review_status,
+                    pc.reviewer_notes, pc.reviewed_at, pc.reviewed_by,
+                    pc.classified_at,
+                    v.description_preview
+                FROM post_classifications pc
+                LEFT JOIN LATERAL (
+                    SELECT description_preview
+                    FROM ({view_union}) all_views
+                    WHERE all_views.link = pc.link
+                      AND all_views.city_or_region = pc.city_or_region
+                    LIMIT 1
+                ) v ON true
+                {where_clause}
+                ORDER BY pc.classified_at DESC
+                LIMIT %s OFFSET %s
+            """
+            cursor.execute(data_sql, params + [limit, offset])
+            rows = cursor.fetchall()
+
+            # Serialize datetime fields
+            serialized = []
+            for row in rows:
+                r = dict(row)
+                for field in ('reviewed_at', 'classified_at'):
+                    if r.get(field) is not None:
+                        r[field] = r[field].isoformat()
+                serialized.append(r)
+
+            socketio.emit('review_queue_data', {'data': serialized, 'total': total, 'error': None})
+
+    except Exception as e:
+        print(f"Review queue error: {str(e)}")
+        socketio.emit('review_queue_data', {'error': str(e), 'data': [], 'total': 0})
+    finally:
+        if conn:
+            conn.close()
+
+
+@socketio.on('update_classification')
+def handle_update_classification(data):
+    """Update the bucket and review_status of a classification record."""
+    record_id = data.get('id')
+    action    = data.get('action')
+    reviewer_notes = data.get('reviewer_notes', '')
+    reviewed_by    = data.get('reviewed_by', 'Unknown')
+
+    if action not in _ACTION_TO_OUTCOME:
+        socketio.emit('classification_updated', {
+            'error': f'Unknown action: {action}', 'id': record_id
+        })
+        return
+
+    bucket, review_status = _ACTION_TO_OUTCOME[action]
+
+    try:
+        conn = database.connect()
+    except psycopg.Error:
+        socketio.emit('classification_updated', {'error': 'Could not connect to database', 'id': record_id})
+        return
+
+    try:
+        with conn.cursor(row_factory=dict_row) as cursor:
+            cursor.execute(
+                """
+                UPDATE post_classifications
+                SET bucket         = %s,
+                    review_status  = %s,
+                    reviewer_notes = %s,
+                    reviewed_at    = now(),
+                    reviewed_by    = %s
+                WHERE id = %s
+                RETURNING id, bucket, review_status, reviewed_at;
+                """,
+                (bucket, review_status, reviewer_notes or None, reviewed_by, record_id),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                socketio.emit('classification_updated', {'error': f'Record {record_id} not found', 'id': record_id})
+                return
+
+            r = dict(row)
+            if r.get('reviewed_at') is not None:
+                r['reviewed_at'] = r['reviewed_at'].isoformat()
+            r['error'] = None
+            socketio.emit('classification_updated', r)
+
+    except Exception as e:
+        print(f"Update classification error: {str(e)}")
+        socketio.emit('classification_updated', {'error': str(e), 'id': record_id})
+    finally:
+        if conn:
+            conn.close()
+
+
+'''
+    ---------------------------------
+    Auto Scraper
     ---------------------------------
 '''
 

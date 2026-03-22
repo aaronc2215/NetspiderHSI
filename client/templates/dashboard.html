@@ -44,6 +44,7 @@
         <a href="#med-box" id="keyword-link"><img src="../static/icons/key-solid.svg" class="icon"/><span>Keyword</span></a>
         <a href="#small-box" id="help-link"><img src="../static/icons/circle-question-solid.svg" class="icon"/><span>Help</span></a>
         <a href="#big-box-2" id="results-link"><img src="../static/icons/box-archive-solid.svg" class="icon"/><span>Results</span></a>
+        <a href="#review-box" id="review-link"><img src="../static/icons/magnifying-glass-solid.svg" class="icon"/><span>Review Queue</span></a>
         <a href="../index.html" id="logout-link" class="last-child-divider"><img src="../static/icons/right-from-bracket-solid.svg" class="icon"/><span>Logout</span></a>
     </div>
     <div class="nav-logo">
@@ -309,6 +310,88 @@
                 </div>
             </div>
         </div>
+
+        <div id="review-box">
+            <div id="box-header-2">
+                <h2 style="color: #09558B;">
+                    <img src="../static/icons/magnifying-glass-solid.svg" class="icon"/>
+                    Review Queue
+                </h2>
+            </div>
+
+            <div class="database-controls">
+                <select id="rq-bucket-filter" class="filter-dropdown">
+                    <option value="">All Buckets</option>
+                    <option value="1">Bucket 1 — Safe</option>
+                    <option value="2">Bucket 2 — False Positives</option>
+                    <option value="3">Bucket 3 — Risky</option>
+                </select>
+                <select id="rq-source-filter" class="filter-dropdown">
+                    <option value="">All Websites</option>
+                    <option value="raw_escort_alligator_posts">Escort Alligator</option>
+                    <option value="raw_eros_posts">Eros</option>
+                    <option value="raw_mega_personals_posts">Mega Personals</option>
+                    <option value="raw_rub_ratings_posts">Rub Ratings</option>
+                    <option value="raw_skipthegames_posts">Skip the Games</option>
+                    <option value="raw_yesbackpage_posts">Yes Back Page</option>
+                </select>
+                <select id="rq-status-filter" class="filter-dropdown">
+                    <option value="">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="confirmed_risky">Confirmed Risky</option>
+                    <option value="cleared">Cleared</option>
+                    <option value="marked_safe">Marked Safe</option>
+                </select>
+                <button id="rq-refresh-btn" class="button-app-sub">Refresh</button>
+            </div>
+
+            <div class="database-refresh">
+                <span id="rq-total-label" style="font-size: 14px; color: #555;"></span>
+            </div>
+
+            <div class="table-wrapper">
+                <div class="table-scroll">
+                    <table id="review-queue-table">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" id="rq-select-all"/></th>
+                                <th>ID</th>
+                                <th>Website</th>
+                                <th>City</th>
+                                <th>Rule Score</th>
+                                <th>LLM Score</th>
+                                <th>Final Score</th>
+                                <th>Bucket</th>
+                                <th>Status</th>
+                                <th>Description Preview</th>
+                                <th>LLM Reasoning</th>
+                                <th>Classified At</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rq-tbody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="rq-action-panel" style="margin-top: 16px; padding: 12px;">
+                <span style="font-size: 14px; margin-right: 12px;">
+                    Selected: <strong id="rq-selected-count">0</strong>
+                </span>
+                <textarea id="rq-reviewer-notes" placeholder="Optional reviewer notes..." rows="2"
+                    style="width: 35%; margin-right: 12px; vertical-align: top; padding: 4px;"></textarea>
+                <label style="margin-right: 6px; font-size: 13px;">Reviewed by:</label>
+                <input type="text" id="rq-reviewed-by" placeholder="Agent name"
+                    style="width: 130px; margin-right: 12px; padding: 4px;">
+                <button id="rq-confirm-risky-btn" class="button-app-sub"
+                    style="background: #c0392b; color: white; border-color: #c0392b;">Confirm Risky</button>
+                <button id="rq-clear-legitimate-btn" class="button-app-sub"
+                    style="background: #e67e22; color: white; border-color: #e67e22;">Clear as Legitimate</button>
+                <button id="rq-mark-safe-btn" class="button-app-sub"
+                    style="background: #27ae60; color: white; border-color: #27ae60;">Mark Safe</button>
+            </div>
+        </div>
+
     </div>
 </div>
 </div>
@@ -323,6 +406,7 @@
 
 <script src="../static/scripts/resultManager.js"></script>
 <script src="../static/scripts/scheduler.js"></script>
+<script src="../static/scripts/reviewQueue.js"></script>
 
 </body>
 </html>
